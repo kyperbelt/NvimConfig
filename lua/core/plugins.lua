@@ -12,6 +12,7 @@ end
 local packer_bootstrap = ensure_packer()
 
 return require('packer').startup(function(use)
+
   use 'wbthomason/packer.nvim'
   use "ellisonleao/gruvbox.nvim"
 
@@ -45,6 +46,8 @@ return require('packer').startup(function(use)
   use "williamboman/mason.nvim"
   use "williamboman/mason-lspconfig.nvim"
   use "neovim/nvim-lspconfig"
+
+  use "github/copilot.vim"
 
   -- My plugins here
   -- use 'foo1/bar1.nvim'
