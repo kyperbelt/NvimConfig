@@ -1,7 +1,9 @@
-
-
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
+
+vim.cmd("let g:VM_maps = {}")
+vim.cmd("let g:VM_maps['Find Under'] = '<C-d>'")
+vim.cmd("let g:VM_maps['Find Subword Under'] = '<C-d>'")
 
 vim.opt.backspace = '2'
 vim.opt.showcmd = true
@@ -33,6 +35,24 @@ vim.keymap.set('n', '<Leader>wh', '<c-w>h', {desc="Move Left"})
 vim.keymap.set('n', '<Leader>wj', '<c-w>j', {desc="Move Down"})
 vim.keymap.set('n', '<Leader>wk', '<c-w>k', {desc="Move Up"})
 vim.keymap.set('n', '<Leader>wl', '<c-w>l', {desc="Move Right"})
+
+-- buffer
+vim.keymap.set('n', '<Leader>bn', '<c-w>l', {desc="Move Right"})
+vim.keymap.set('n', '<Leader>bx', ':bd<CR>', {desc="Delete Buffer"})
+
+
+local prev_buf = 0
+vim.api.nvim_create_autocmd({"BufWinLeave"}, {
+  pattern = {""},
+  callback = function(ev)
+    if vim.fn.buflisted(ev.buf) > 0 then
+      prev_buf = ev.buf
+    end
+  end
+})
+
+
+vim.keymap.set('n', '<Leader>bb', function() return ":"..prev_buf.."b<CR>" end, {desc="Flip buffer", expr = true})
 
 
 

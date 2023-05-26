@@ -13,4 +13,7 @@ wk.register({
   ["<leader>f"] = {name = "+find"},
   ["<leader>w"] = {name = "+window"},
   ["<leader>t"] = {name = "+terminal"},
+  ["<leader>o"] = {name = "+org"},
+  ["<leader>b"] = {name = "+buffer"},
+  ["<leader>c"] = {name = "+code"},
 })

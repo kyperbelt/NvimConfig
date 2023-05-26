@@ -42,12 +42,33 @@ return require('packer').startup(function(use)
     end
   } 
 
+  use{
+    "numToStr/Comment.nvim",
+    config = function()
+      require('Comment').setup()
+    end
+  }
+
   -- LSP
   use "williamboman/mason.nvim"
   use "williamboman/mason-lspconfig.nvim"
   use "neovim/nvim-lspconfig"
+  use "mfussenegger/nvim-dap"
 
   use "github/copilot.vim"
+
+
+  -- NOTE TAKING
+  use { "nvim-orgmode/orgmode", config = function()
+      require("orgmode").setup{}
+    end
+  }
+
+  -- Utility
+  use "mg979/vim-visual-multi"
+
+
+
 
   -- My plugins here
   -- use 'foo1/bar1.nvim'

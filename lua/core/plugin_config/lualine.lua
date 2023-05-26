@@ -7,7 +7,7 @@ require("lualine").setup ({
   sections = {
     lualine_a = {
       'mode',
-      'branch',
+      -- 'branch',
       -- 'vim.inspect(vim.cmd("call copilot#Call(\'checkStatus\', {})") == "")'
     },
     lualine_c = {
