@@ -1,3 +1,6 @@
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
@@ -30,6 +33,7 @@ require('lazy').setup({
 
   -- NOTE: This is where your plugins related to LSP can be installed.
   --  The configuration is done below. Search for lspconfig to find it below.
+  --
   {
     -- LSP Configuration & Plugins
     'neovim/nvim-lspconfig',
@@ -61,6 +65,17 @@ require('lazy').setup({
       -- Adds a number of user-friendly snippets
       'rafamadriz/friendly-snippets',
     },
+  },
+  {
+    'nvim-tree/nvim-tree.lua',
+    lazy = false,
+    dependencies = {
+      'nvim-tree/nvim-web-devicons',
+    },
+    config = function()
+      require('nvim-tree').setup({
+      })
+    end
   },
 
   -- Useful plugin to show you pending keybinds.
@@ -125,10 +140,10 @@ require('lazy').setup({
       },
       sections = {
         lualine_a = {
-          'mode', 
+          'mode',
         },
-        lualine_c ={
-          'filename', 
+        lualine_c = {
+          'filename',
           'searchcount',
         }
       }
@@ -224,9 +239,25 @@ vim.o.completeopt = 'menuone,noselect'
 
 vim.o.termguicolors = true
 
---[[KEYMAPS | keymappings | key maps ]]
+--[[KEYMAPS | keymappings | maps | keybinds]]
 
 vim.keymap.set({ 'n', 'v' }, '<Space>', '<Nop>', { silent = true })
+
+-- file | directory
+local toggle_replace = function()
+  local api = require("nvim-tree.api")
+  if api.tree.is_visible() then
+    api.tree.close()
+  else
+    api.tree.open({
+      current_window = true,
+      find_file = true,
+    })
+  end
+end
+
+vim.keymap.set('n', '<Leader>dt', toggle_replace, { desc = "directory [T]oggle" })
+
 
 -- windows
 vim.keymap.set('n', '<Leader>wv', ':vsplit<CR>', { desc = "Vertical Split" })
@@ -363,7 +394,7 @@ local on_attach = function(_, bufnr)
   -- for LSP related items. It sets the mode, buffer and description for us each time.
   local nmap = function(keys, func, desc)
     if desc then
-      desc = 'LSP: ' .. desc
+      desc = '[lsp] ' .. desc
     end
 
     vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc })
