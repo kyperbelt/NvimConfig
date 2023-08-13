@@ -27,6 +27,7 @@ require('lazy').setup({
   -- Git related plugins
   'tpope/vim-fugitive',
   'tpope/vim-rhubarb',
+  'godlygeek/tabular',
 
   -- Detect tabstop and shiftwidth automatically
   'tpope/vim-sleuth',
@@ -193,6 +194,64 @@ require('lazy').setup({
     },
     build = ':TSUpdate',
   },
+  {
+    "epwalsh/obsidian.nvim",
+    lazy = true,
+    event = { "BufReadPre " .. vim.fn.expand("~") .. "/vault/**.md" },
+    -- If you want to use the home shortcut '~' here you need to call 'vim.fn.expand':
+    -- event = { "BufReadPre " .. vim.fn.expand "~" .. "/my-vault/**.md" },
+    dependencies = {
+      -- Required.
+      "nvim-lua/plenary.nvim",
+
+      -- see below for full list of optional dependencies 👇
+    },
+    config = function()
+      require('obsidian').setup({
+        dir = "~/vault", -- no need to call 'vim.fn.expand' here
+        notes_subdir = "notes",
+        daily_notes = {
+          folder = "notes/daily",
+          date_format = "%Y-%m-%d",
+        },
+        completion = {
+          nvim_cmp = true,
+          min_chars = 2,
+          prepend_note_id = true,
+          new_notes_location = "notes_subdir",
+        },
+        mappings = {
+          -- removed becauise of problem with which-key?
+          -- ["gf"] = require("obsidian.mapping").gf_passthrough(),
+        },
+        note_id_func = function(title)
+          -- Create note IDs in a Zettelkasten format with a timestamp and a suffix.
+          -- In this case a note with the title 'My new note' will given an ID that looks
+          -- like '1657296016-my-new-note', and therefore the file name '1657296016-my-new-note.md'
+          local suffix = ""
+          if title ~= nil then
+            -- If title is given, transform it into valid file name.
+            suffix = title:gsub(" ", "-"):gsub("[^A-Za-z0-9-]", ""):lower()
+          else
+            -- If title is nil, just add 4 random uppercase letters to the suffix.
+            for _ = 1, 4 do
+              suffix = suffix .. string.char(math.random(65, 90))
+            end
+          end
+          return tostring(os.time()) .. "-" .. suffix
+        end,
+      })
+    end,
+  },
+  {
+    -- markdown preview
+    "iamcco/markdown-preview.nvim",
+    config = function()
+      vim.fn["mkdp#util#install"]()
+      vim.g.mkdp_auto_start = 0
+      vim.g.mkdp_auto_close = 1
+    end,
+  },
 
   -- NOTE: Next Step on Your Neovim Journey: Add/Configure additional "plugins" for kickstart
   --       These are some example plugins that I've included in the kickstart repository.
@@ -241,6 +300,9 @@ vim.o.termguicolors = true
 
 --[[KEYMAPS | keymappings | maps | keybinds]]
 
+
+-- misc | general
+vim.keymap.set('n', '<Leader>h', ':nohlsearch<CR>', { desc = "Remove Highlight" })
 vim.keymap.set({ 'n', 'v' }, '<Space>', '<Nop>', { silent = true })
 
 -- file | directory
@@ -257,7 +319,7 @@ local toggle_replace = function()
 end
 
 vim.keymap.set('n', '<Leader>dt', toggle_replace, { desc = "directory [T]oggle" })
-
+vim.keymap.set('n', '<leader>fc', ':e ~/.config/nvim/init.lua<CR>', { desc = "[C]onfig" }) -- open configuration file
 
 -- windows
 vim.keymap.set('n', '<Leader>wv', ':vsplit<CR>', { desc = "Vertical Split" })
@@ -315,12 +377,13 @@ vim.keymap.set('n', '<leader>fd', require('telescope.builtin').diagnostics, { de
 -- See `:help nvim-treesitter`
 require('nvim-treesitter.configs').setup {
   -- Add languages to be installed here that you want installed for treesitter
-  ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'tsx', 'typescript', 'vimdoc', 'vim' },
+  ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'tsx', 'typescript', 'vimdoc', 'vim', 'markdown',
+    'markdown_inline' },
 
   -- Autoinstall languages that are not installed. Defaults to false (but you can change for yourself!)
   auto_install = false,
 
-  highlight = { enable = true },
+  highlight = { enable = true, additional_vim_regex_highlighting = { 'markdown' } },
   indent = { enable = true },
   incremental_selection = {
     enable = true,
@@ -487,47 +550,8 @@ mason_lspconfig.setup_handlers {
 local cmp = require 'cmp'
 local luasnip = require 'luasnip'
 require('luasnip.loaders.from_vscode').lazy_load()
-luasnip.config.setup {}
-
-cmp.setup {
-  snippet = {
-    expand = function(args)
-      luasnip.lsp_expand(args.body)
-    end,
-  },
-  mapping = cmp.mapping.preset.insert {
-    ['<C-n>'] = cmp.mapping.select_next_item(),
-    ['<C-p>'] = cmp.mapping.select_prev_item(),
-    ['<C-d>'] = cmp.mapping.scroll_docs(-4),
-    ['<C-f>'] = cmp.mapping.scroll_docs(4),
-    ['<C-Space>'] = cmp.mapping.complete {},
-    ['<CR>'] = cmp.mapping.confirm {
-      behavior = cmp.ConfirmBehavior.Replace,
-      select = true,
-    },
-    ['<Tab>'] = cmp.mapping(function(fallback)
-      if cmp.visible() then
-        cmp.select_next_item()
-      elseif luasnip.expand_or_locally_jumpable() then
-        luasnip.expand_or_jump()
-      else
-        fallback()
-      end
-    end, { 'i', 's' }),
-    ['<S-Tab>'] = cmp.mapping(function(fallback)
-      if cmp.visible() then
-        cmp.select_prev_item()
-      elseif luasnip.locally_jumpable(-1) then
-        luasnip.jump(-1)
-      else
-        fallback()
-      end
-    end, { 'i', 's' }),
-  },
-  sources = {
-    { name = 'nvim_lsp' },
-    { name = 'luasnip' },
-  },
+luasnip.config.setup {
+  updateevents = "TextChanged,TextChangedI",
 }
 
 cmp.setup {
@@ -570,3 +594,57 @@ cmp.setup {
     { name = 'luasnip' },
   },
 }
+
+cmp.setup {
+  snippet = {
+    expand = function(args)
+      luasnip.lsp_expand(args.body)
+    end,
+  },
+  mapping = cmp.mapping.preset.insert {
+    ['<C-n>'] = cmp.mapping.select_next_item(),
+    ['<C-p>'] = cmp.mapping.select_prev_item(),
+    ['<C-d>'] = cmp.mapping.scroll_docs(-4),
+    ['<C-f>'] = cmp.mapping.scroll_docs(4),
+    ['<C-Space>'] = cmp.mapping.complete {},
+    ['<CR>'] = cmp.mapping.confirm {
+      behavior = cmp.ConfirmBehavior.Replace,
+      select = true,
+    },
+    ['<Tab>'] = cmp.mapping(function(fallback)
+      if cmp.visible() then
+        cmp.select_next_item()
+      elseif luasnip.expand_or_locally_jumpable() then
+        luasnip.expand_or_jump()
+      else
+        fallback()
+      end
+    end, { 'i', 's' }),
+    ['<S-Tab>'] = cmp.mapping(function(fallback)
+      if cmp.visible() then
+        cmp.select_prev_item()
+      elseif luasnip.locally_jumpable(-1) then
+        luasnip.jump(-1)
+      else
+        fallback()
+      end
+    end, { 'i', 's' }),
+  },
+  sources = {
+    { name = 'nvim_lsp' },
+    { name = 'luasnip' },
+  },
+}
+
+-- custom snippets
+--
+local s = luasnip.snippet
+local fmt = require("luasnip.extras.fmt").fmt
+local i = luasnip.insert_node
+local rep = require("luasnip.extras").rep
+
+luasnip.add_snippets("markdown", {
+  s("title", fmt("---\ntitle: {}\n---", { i(1, "name"), }) ),
+}, {
+  key = "markdown",
+})
