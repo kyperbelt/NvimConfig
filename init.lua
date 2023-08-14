@@ -644,7 +644,7 @@ local i = luasnip.insert_node
 local rep = require("luasnip.extras").rep
 
 luasnip.add_snippets("markdown", {
-  s("title", fmt("---\ntitle: {}\n---", { i(1, "name"), }) ),
+  s("title", fmt("---\ntitle: {}\n---\n# {}", { i(1, "name"), rep(1)}) ),
 }, {
   key = "markdown",
 })
