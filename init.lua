@@ -4,7 +4,6 @@ vim.g.loaded_netrwPlugin = 1
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
-
 -- Install package manager
 --    https://github.com/folke/lazy.nvim
 --    `:help lazy.nvim.txt` for more info
@@ -51,6 +50,106 @@ require('lazy').setup({
       'folke/neodev.nvim',
     },
   },
+  {
+    'Hoffs/omnisharp-extended-lsp.nvim',
+  },
+  {
+    -- debugger | debugging | dap
+    'mfussenegger/nvim-dap',
+    dependencies = {
+      -- Creates a beautiful debugger UI
+      'rcarriga/nvim-dap-ui',
+
+      -- Installs the debug adapters for you
+      'williamboman/mason.nvim',
+      'jay-babu/mason-nvim-dap.nvim',
+
+      -- Add your own debuggers here
+      'leoluz/nvim-dap-go',
+    },
+    config = function()
+      local dap = require 'dap'
+      local dapui = require 'dapui'
+
+      require('mason-nvim-dap').setup {
+        -- Makes a best effort to setup the various debuggers with
+        -- reasonable debug configurations
+        automatic_setup = true,
+
+        -- You can provide additional configuration to the handlers,
+        -- see mason-nvim-dap README for more information
+        handlers = {},
+
+        -- You'll need to check that you have the required things installed
+        -- online, please don't ask me how to install them :)
+        ensure_installed = {
+          -- Update this to ensure that you have the debuggers for the langs you want
+          'delve',
+        },
+      }
+
+      -- Basic debugging keymaps, feel free to change to your liking!
+      vim.keymap.set('n', '<F5>', dap.continue, { desc = 'Debug: Start/Continue' })
+      vim.keymap.set('n', '<F1>', dap.step_into, { desc = 'Debug: Step Into' })
+      vim.keymap.set('n', '<F2>', dap.step_over, { desc = 'Debug: Step Over' })
+      vim.keymap.set('n', '<F3>', dap.step_out, { desc = 'Debug: Step Out' })
+      vim.keymap.set('n', '<leader>b', dap.toggle_breakpoint, { desc = 'Debug: Toggle Breakpoint' })
+      vim.keymap.set('n', '<leader>B', function()
+        dap.set_breakpoint(vim.fn.input 'Breakpoint condition: ')
+      end, { desc = 'Debug: Set Breakpoint' })
+
+      -- Dap UI setup
+      -- For more information, see |:help nvim-dap-ui|
+      dapui.setup {
+        -- Set icons to characters that are more likely to work in every terminal.
+        --    Feel free to remove or use ones that you like more! :)
+        --    Don't feel like these are good choices.
+        icons = { expanded = '▾', collapsed = '▸', current_frame = '*' },
+        controls = {
+          icons = {
+            pause = '‖',
+            play = '▶',
+            step_into = '⏎',
+            step_over = '⤠',
+            step_out = '⤟',
+            step_back = 'b',
+            run_last = '▶▶',
+            terminate = '⏻',
+            disconnect = '⏏',
+          },
+        },
+      }
+
+      -- Toggle to see last session result. Without this, you can't see session output in case of unhandled exception.
+      vim.keymap.set('n', '<F7>', dapui.toggle, { desc = 'Debug: See last session result.' })
+
+      dap.listeners.after.event_initialized['dapui_config'] = dapui.open
+      dap.listeners.before.event_terminated['dapui_config'] = dapui.close
+      dap.listeners.before.event_exited['dapui_config'] = dapui.close
+
+      -- Install golang specific config
+      require('dap-go').setup()
+    end,
+  },
+  {
+    "folke/trouble.nvim",
+    dependencies = { "nvim-tree/nvim-web-devicons" },
+    opts = {
+      -- your configuration comes here
+      -- or leave it empty to use the default settings
+      -- refer to the configuration section below
+    },
+    config = function()
+      -- trouble keybinds | trouble keymaps
+      vim.keymap.set("n", "<leader>xx", function() require("trouble").open() end, { desc = "[X]pen Trouble" })
+      vim.keymap.set("n", "<leader>xw", function() require("trouble").open("workspace_diagnostics") end,
+        { desc = "[W]orkpace diagnostics" })
+      vim.keymap.set("n", "<leader>xd", function() require("trouble").open("document_diagnostics") end,
+        { desc = "[D]ocument diagnostics" })
+      vim.keymap.set("n", "<leader>xq", function() require("trouble").open("quickfix") end, { desc = "[Q]uickfix" })
+      vim.keymap.set("n", "<leader>xl", function() require("trouble").open("loclist") end, { desc = "[L]oclist" })
+    end,
+  },
 
   {
     -- Autocompletion
@@ -88,8 +187,6 @@ require('lazy').setup({
       wk.register({
         ["<leader>f"] = { name = "+find" },
         ["<leader>w"] = { name = "+window" },
-        -- ["<leader>t"] = { name = "+terminal" },
-        -- ["<leader>o"] = { name = "+org" },
         ["<leader>b"] = { name = "+buffer" },
         ["<leader>c"] = { name = "+code" },
         ["<leader>g"] = { name = "+git" },
@@ -440,6 +537,10 @@ require('nvim-treesitter.configs').setup {
   },
 }
 
+
+-- vim.opt.foldmethod = "expr"
+-- vim.opt.foldexpr = "nvim_treesitter#foldexpr()"
+
 -- Diagnostic keymaps
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous diagnostic message' })
 vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next diagnostic message' })
@@ -503,6 +604,7 @@ end
 --
 --  If you want to override the default filetypes that your language server will attach to you can
 --  define the property 'filetypes' to the map in question.
+
 local servers = {
   -- clangd = {},
   -- gopls = {},
@@ -510,12 +612,15 @@ local servers = {
   -- rust_analyzer = {},
   -- tsserver = {},
   -- html = { filetypes = { 'html', 'twig', 'hbs'} },
-
   lua_ls = {
     Lua = {
       workspace = { checkThirdParty = false },
       telemetry = { enable = false },
     },
+  },
+  omnisharp = {
+    -- cmd = {'./local/share/nvim/mason/bin/omnisharp', '--languageserver', '--hostPID', tostring(vim.fn.getpid())},
+    enable_roslyn_analyzers = true,
   },
 }
 
@@ -538,10 +643,17 @@ mason_lspconfig.setup_handlers {
     require('lspconfig')[server_name].setup {
       capabilities = capabilities,
       on_attach = on_attach,
+      handlers = server_name == "omnisharp" and { ["textDocument/definition"] = require('omnisharp_extended').handler } or
+      {},
       settings = servers[server_name],
       filetypes = (servers[server_name] or {}).filetypes,
     }
-  end
+  end,
+}
+
+require("lspconfig")['gdscript'].setup {
+  capabilities = capabilities,
+  on_attach = on_attach,
 }
 
 
@@ -636,6 +748,19 @@ cmp.setup {
   },
 }
 
+
+-- whichkey
+
+local wk = require("which-key")
+
+wk.register({
+  ["<leader>f"] = { name = "+find" },
+  ["<leader>w"] = { name = "+window" },
+  ["<leader>b"] = { name = "+buffer" },
+  ["<leader>c"] = { name = "+code" },
+  ["<leader>g"] = { name = "+git" },
+})
+
 -- custom snippets
 --
 local s = luasnip.snippet
@@ -644,7 +769,7 @@ local i = luasnip.insert_node
 local rep = require("luasnip.extras").rep
 
 luasnip.add_snippets("markdown", {
-  s("title", fmt("---\ntitle: {}\n---\n# {}", { i(1, "name"), rep(1)}) ),
+  s("title", fmt("---\ntitle: {}\n---\n# {}", { i(1, "name"), rep(1) })),
 }, {
   key = "markdown",
 })
