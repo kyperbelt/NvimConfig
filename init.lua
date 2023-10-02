@@ -253,9 +253,10 @@ require('lazy').setup({
     'lukas-reineke/indent-blankline.nvim',
     -- Enable `lukas-reineke/indent-blankline.nvim`
     -- See `:help indent_blankline.txt`
+    main = 'ibl',
+  --  char = '┊',
     opts = {
-      char = '┊',
-      show_trailing_blankline_indent = false,
+      -- show_trailing_blankline_indent = false,
     },
   },
 
@@ -761,6 +762,7 @@ wk.register({
   ["<leader>g"] = { name = "+git" },
 })
 
+
 -- custom snippets
 --
 local s = luasnip.snippet
@@ -770,6 +772,12 @@ local rep = require("luasnip.extras").rep
 
 luasnip.add_snippets("markdown", {
   s("title", fmt("---\ntitle: {}\n---\n# {}", { i(1, "name"), rep(1) })),
+}, {
+  key = "markdown",
+})
+
+luasnip.add_snippets("markdown", {
+  s("noteh", fmt("---\ntitle: {}\n---\n# {}\n### Summary\n\n### Notes\n{}", { i(1, "name"), rep(1), i(0) })),
 }, {
   key = "markdown",
 })
