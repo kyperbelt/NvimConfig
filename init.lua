@@ -1,4 +1,5 @@
 vim.g.loaded_netrw = 1
+vim.g["grammarous#jar_url"] = 'https://www.languagetool.org/download/LanguageTool-5.9.zip'
 vim.g.loaded_netrwPlugin = 1
 
 vim.g.mapleader = ' '
@@ -27,7 +28,7 @@ require('lazy').setup({
   'tpope/vim-fugitive',
   'tpope/vim-rhubarb',
   'godlygeek/tabular',
-
+  'rhysd/vim-grammarous',
   -- Detect tabstop and shiftwidth automatically
   'tpope/vim-sleuth',
 
@@ -84,7 +85,7 @@ require('lazy').setup({
         -- online, please don't ask me how to install them :)
         ensure_installed = {
           -- Update this to ensure that you have the debuggers for the langs you want
-          'delve',
+          -- 'delve',
         },
       }
 
@@ -623,6 +624,23 @@ local servers = {
     -- cmd = {'./local/share/nvim/mason/bin/omnisharp', '--languageserver', '--hostPID', tostring(vim.fn.getpid())},
     enable_roslyn_analyzers = true,
   },
+  html = {
+    filetypes = { 'html', 'twig', 'hbs', "jsx", "tsx", "rust", "css", "scss", "javascript", "typescript" },
+    init_options = {
+      userLanguages = {
+        rust = "html"
+      },
+    },
+  },
+  tailwindcss = {
+    filetypes = { 'html', 'twig', 'hbs', "jsx", "tsx", "rust", "css", "scss", "javascript", "typescript", "javascriptreact", "typescriptreact"},
+    init_options = {
+      userLanguages = {
+        rust = "html"
+      },
+    },
+  },
+
 }
 
 -- Setup neovim lua configuration
@@ -648,6 +666,7 @@ mason_lspconfig.setup_handlers {
       {},
       settings = servers[server_name],
       filetypes = (servers[server_name] or {}).filetypes,
+      init_options = (servers[server_name] or {}).init_options,
     }
   end,
 }
@@ -667,46 +686,46 @@ luasnip.config.setup {
   updateevents = "TextChanged,TextChangedI",
 }
 
-cmp.setup {
-  snippet = {
-    expand = function(args)
-      luasnip.lsp_expand(args.body)
-    end,
-  },
-  mapping = cmp.mapping.preset.insert {
-    ['<C-n>'] = cmp.mapping.select_next_item(),
-    ['<C-p>'] = cmp.mapping.select_prev_item(),
-    ['<C-d>'] = cmp.mapping.scroll_docs(-4),
-    ['<C-f>'] = cmp.mapping.scroll_docs(4),
-    ['<C-Space>'] = cmp.mapping.complete {},
-    ['<CR>'] = cmp.mapping.confirm {
-      behavior = cmp.ConfirmBehavior.Replace,
-      select = true,
-    },
-    ['<Tab>'] = cmp.mapping(function(fallback)
-      if cmp.visible() then
-        cmp.select_next_item()
-      elseif luasnip.expand_or_locally_jumpable() then
-        luasnip.expand_or_jump()
-      else
-        fallback()
-      end
-    end, { 'i', 's' }),
-    ['<S-Tab>'] = cmp.mapping(function(fallback)
-      if cmp.visible() then
-        cmp.select_prev_item()
-      elseif luasnip.locally_jumpable(-1) then
-        luasnip.jump(-1)
-      else
-        fallback()
-      end
-    end, { 'i', 's' }),
-  },
-  sources = {
-    { name = 'nvim_lsp' },
-    { name = 'luasnip' },
-  },
-}
+-- cmp.setup {
+--   snippet = {
+--     expand = function(args)
+--       luasnip.lsp_expand(args.body)
+--     end,
+--   },
+--   mapping = cmp.mapping.preset.insert {
+--     ['<C-n>'] = cmp.mapping.select_next_item(),
+--     ['<C-p>'] = cmp.mapping.select_prev_item(),
+--     ['<C-d>'] = cmp.mapping.scroll_docs(-4),
+--     ['<C-f>'] = cmp.mapping.scroll_docs(4),
+--     ['<C-Space>'] = cmp.mapping.complete {},
+--     ['<CR>'] = cmp.mapping.confirm {
+--       behavior = cmp.ConfirmBehavior.Replace,
+--       select = true,
+--     },
+--     ['<Tab>'] = cmp.mapping(function(fallback)
+--       if cmp.visible() then
+--         cmp.select_next_item()
+--       elseif luasnip.expand_or_locally_jumpable() then
+--         luasnip.expand_or_jump()
+--       else
+--         fallback()
+--       end
+--     end, { 'i', 's' }),
+--     ['<S-Tab>'] = cmp.mapping(function(fallback)
+--       if cmp.visible() then
+--         cmp.select_prev_item()
+--       elseif luasnip.locally_jumpable(-1) then
+--         luasnip.jump(-1)
+--       else
+--         fallback()
+--       end
+--     end, { 'i', 's' }),
+--   },
+--   sources = {
+--     { name = 'nvim_lsp' },
+--     { name = 'luasnip' },
+--   },
+-- }
 
 cmp.setup {
   snippet = {
@@ -768,16 +787,32 @@ wk.register({
 local s = luasnip.snippet
 local fmt = require("luasnip.extras.fmt").fmt
 local i = luasnip.insert_node
+local l = require("luasnip.extras").lambda
+local t = luasnip.text_node
+local f = luasnip.function_node
 local rep = require("luasnip.extras").rep
+
 
 luasnip.add_snippets("markdown", {
   s("title", fmt("---\ntitle: {}\n---\n# {}", { i(1, "name"), rep(1) })),
-}, {
-  key = "markdown",
-})
-
-luasnip.add_snippets("markdown", {
   s("noteh", fmt("---\ntitle: {}\n---\n# {}\n### Summary\n\n### Notes\n{}", { i(1, "name"), rep(1), i(0) })),
 }, {
   key = "markdown",
 })
+
+-- yew snippets
+-- function component
+luasnip.add_snippets("rust", {
+  s("fcomp", {
+    t({"#[derive(Properties, PartialEq, Clone)]", ""}),
+    t("pub struct "), i(1, "name"), t({"Props {}","", ""}),
+    t("#[function_component("),rep(1), t(")]"),
+    t("pub fn "), l(l._1:lower(), 1), t("(props: &"), rep(1), t({"Props) -> Html {", ""}),
+    t({"html! {", ""}),
+    i(0),
+    t({"}", ""}),
+    t({"}",""}),
+  }),
+})
+
+
