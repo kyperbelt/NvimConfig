@@ -1,9 +1,22 @@
+
+if vim.g.neovide then
+  vim.g.neovide_remember_window_size = true
+end
+
 vim.g.loaded_netrw = 1
 vim.g["grammarous#jar_url"] = 'https://www.languagetool.org/download/LanguageTool-5.9.zip'
 vim.g.loaded_netrwPlugin = 1
 
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
+
+vim.keymap.set('i', '<C-J>', 'copilot#Accept("<CR>")', {
+  expr = true,
+  replace_keycodes = false
+})
+
+vim.g.copilot_no_tab_map = true
+
 
 -- Install package manager
 --    https://github.com/folke/lazy.nvim
@@ -29,6 +42,7 @@ require('lazy').setup({
   'tpope/vim-rhubarb',
   'godlygeek/tabular',
   'rhysd/vim-grammarous',
+  'github/copilot.vim',
   -- Detect tabstop and shiftwidth automatically
   'tpope/vim-sleuth',
 
@@ -72,6 +86,7 @@ require('lazy').setup({
       local dap = require 'dap'
       local dapui = require 'dapui'
 
+
       require('mason-nvim-dap').setup {
         -- Makes a best effort to setup the various debuggers with
         -- reasonable debug configurations
@@ -86,6 +101,22 @@ require('lazy').setup({
         ensure_installed = {
           -- Update this to ensure that you have the debuggers for the langs you want
           -- 'delve',
+        },
+      }
+      
+      dap.adapters.godot = {
+        type = "server",
+        host = "127.0.0.1",
+        port = 6006,
+      }
+
+      dap.configurations.gdscript = {
+        {
+          type = "godot",
+          request = "launch",
+          name = "Launch Scene",
+          program = "${workspaceFolder}",
+          launch_scene = true,
         },
       }
 
@@ -294,55 +325,6 @@ require('lazy').setup({
     build = ':TSUpdate',
   },
   {
-    "epwalsh/obsidian.nvim",
-    lazy = true,
-    event = { "BufReadPre " .. vim.fn.expand("~") .. "/vault/**.md" },
-    -- If you want to use the home shortcut '~' here you need to call 'vim.fn.expand':
-    -- event = { "BufReadPre " .. vim.fn.expand "~" .. "/my-vault/**.md" },
-    dependencies = {
-      -- Required.
-      "nvim-lua/plenary.nvim",
-
-      -- see below for full list of optional dependencies 👇
-    },
-    config = function()
-      require('obsidian').setup({
-        dir = "~/vault", -- no need to call 'vim.fn.expand' here
-        notes_subdir = "notes",
-        daily_notes = {
-          folder = "notes/daily",
-          date_format = "%Y-%m-%d",
-        },
-        completion = {
-          nvim_cmp = true,
-          min_chars = 2,
-          prepend_note_id = true,
-          new_notes_location = "notes_subdir",
-        },
-        mappings = {
-          -- removed becauise of problem with which-key?
-          -- ["gf"] = require("obsidian.mapping").gf_passthrough(),
-        },
-        note_id_func = function(title)
-          -- Create note IDs in a Zettelkasten format with a timestamp and a suffix.
-          -- In this case a note with the title 'My new note' will given an ID that looks
-          -- like '1657296016-my-new-note', and therefore the file name '1657296016-my-new-note.md'
-          local suffix = ""
-          if title ~= nil then
-            -- If title is given, transform it into valid file name.
-            suffix = title:gsub(" ", "-"):gsub("[^A-Za-z0-9-]", ""):lower()
-          else
-            -- If title is nil, just add 4 random uppercase letters to the suffix.
-            for _ = 1, 4 do
-              suffix = suffix .. string.char(math.random(65, 90))
-            end
-          end
-          return tostring(os.time()) .. "-" .. suffix
-        end,
-      })
-    end,
-  },
-  {
     -- markdown preview
     "iamcco/markdown-preview.nvim",
     config = function()
@@ -355,8 +337,9 @@ require('lazy').setup({
   -- NOTE: Next Step on Your Neovim Journey: Add/Configure additional "plugins" for kickstart
   --       These are some example plugins that I've included in the kickstart repository.
   --       Uncomment any of the lines below to enable them.
-  -- require 'kickstart.plugins.autoformat',
-  -- require 'kickstart.plugins.debug',
+  -- require 'extension.snippets',
+  -- require 'extension.whichkey',
+  -- require 'extension.cmp',
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --    You can use this folder to prevent any conflicts with this init.lua if you're interested in keeping
@@ -367,6 +350,7 @@ require('lazy').setup({
   -- { import = 'custom.plugins' },
 }, {})
 
+require 'extension.snippets'
 
 -- Config
 
@@ -581,18 +565,6 @@ local on_attach = function(_, bufnr)
   nmap('<leader>ck', vim.lsp.buf.hover, 'Hover Documentation')
   nmap('<C-k>', vim.lsp.buf.signature_help, 'Signature Documentation')
 
-  -- Lesser used LSP functionality
-  -- nmap('gD', vim.lsp.buf.declaration, '[G]oto [D]eclaration')
-  -- nmap('<leader>wa', vim.lsp.buf.add_workspace_folder, '[W]orkspace [A]dd Folder')
-  -- nmap('<leader>wr', vim.lsp.buf.remove_workspace_folder, '[W]orkspace [R]emove Folder')
-  -- nmap('<leader>wl', function()
-  --   print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
-  -- end, '[W]orkspace [L]ist Folders')
-  --
-  -- -- Create a command `:Format` local to the LSP buffer
-  -- vim.api.nvim_buf_create_user_command(bufnr, 'Format', function(_)
-  --   vim.lsp.buf.format()
-  -- end, { desc = 'Format current buffer with LSP' })
 end
 
 
@@ -686,47 +658,6 @@ luasnip.config.setup {
   updateevents = "TextChanged,TextChangedI",
 }
 
--- cmp.setup {
---   snippet = {
---     expand = function(args)
---       luasnip.lsp_expand(args.body)
---     end,
---   },
---   mapping = cmp.mapping.preset.insert {
---     ['<C-n>'] = cmp.mapping.select_next_item(),
---     ['<C-p>'] = cmp.mapping.select_prev_item(),
---     ['<C-d>'] = cmp.mapping.scroll_docs(-4),
---     ['<C-f>'] = cmp.mapping.scroll_docs(4),
---     ['<C-Space>'] = cmp.mapping.complete {},
---     ['<CR>'] = cmp.mapping.confirm {
---       behavior = cmp.ConfirmBehavior.Replace,
---       select = true,
---     },
---     ['<Tab>'] = cmp.mapping(function(fallback)
---       if cmp.visible() then
---         cmp.select_next_item()
---       elseif luasnip.expand_or_locally_jumpable() then
---         luasnip.expand_or_jump()
---       else
---         fallback()
---       end
---     end, { 'i', 's' }),
---     ['<S-Tab>'] = cmp.mapping(function(fallback)
---       if cmp.visible() then
---         cmp.select_prev_item()
---       elseif luasnip.locally_jumpable(-1) then
---         luasnip.jump(-1)
---       else
---         fallback()
---       end
---     end, { 'i', 's' }),
---   },
---   sources = {
---     { name = 'nvim_lsp' },
---     { name = 'luasnip' },
---   },
--- }
-
 cmp.setup {
   snippet = {
     expand = function(args)
@@ -780,40 +711,4 @@ wk.register({
   ["<leader>c"] = { name = "+code" },
   ["<leader>g"] = { name = "+git" },
 })
-
-
--- custom snippets
---
-local s = luasnip.snippet
-local fmt = require("luasnip.extras.fmt").fmt
-local i = luasnip.insert_node
-local l = require("luasnip.extras").lambda
-local t = luasnip.text_node
-local f = luasnip.function_node
-local rep = require("luasnip.extras").rep
-
-
-luasnip.add_snippets("markdown", {
-  s("title", fmt("---\ntitle: {}\n---\n# {}", { i(1, "name"), rep(1) })),
-  s("noteh", fmt("---\ntitle: {}\n---\n# {}\n### Summary\n\n### Notes\n{}", { i(1, "name"), rep(1), i(0) })),
-}, {
-  key = "markdown",
-})
-
--- yew snippets
--- function component
-luasnip.add_snippets("rust", {
-  s("fcomp", {
-    t({"#[derive(Properties, PartialEq, Clone)]", ""}),
-    t("pub struct "), i(1, "name"), t({"Props {}","", ""}),
-    t("#[function_component("),rep(1), t({")]",""}),
-    t("pub fn "), l(l._1:lower(), 1), t("(props: &"), rep(1), t({"Props) -> Html {", "", "\t"}),
-    t({"html! {", "\t\t" }),
-    i(0),
-    t({"", "\t"}),
-    t({"}", ""}),
-    t({"}",""}),
-  }),
-})
-
 
