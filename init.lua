@@ -285,10 +285,15 @@ require('lazy').setup({
     'lukas-reineke/indent-blankline.nvim',
     -- Enable `lukas-reineke/indent-blankline.nvim`
     -- See `:help indent_blankline.txt`
-    main = 'ibl',
-  --  char = '┊',
+    main = "ibl",
     opts = {
-      -- show_trailing_blankline_indent = false,
+      indent = {
+        char = '┊',
+        -- show_trailing_blankline_indent = false,
+      },
+      whitespace = {
+        remove_blankline_trail = true
+      }
     },
   },
 
@@ -646,6 +651,7 @@ mason_lspconfig.setup_handlers {
 require("lspconfig")['gdscript'].setup {
   capabilities = capabilities,
   on_attach = on_attach,
+  -- cmd = vim.lsp.rpc.connect('172.18.176.1', 6005)
 }
 
 
