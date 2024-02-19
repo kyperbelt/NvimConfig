@@ -200,6 +200,7 @@ require('lazy').setup({
   },
   {
     'nvim-tree/nvim-tree.lua',
+    commit='75ff64e',
     lazy = false,
     dependencies = {
       'nvim-tree/nvim-web-devicons',
@@ -591,6 +592,7 @@ local servers = {
   -- rust_analyzer = {},
   -- tsserver = {},
   -- html = { filetypes = { 'html', 'twig', 'hbs'} },
+  -- glsl_analyzer = {},
   lua_ls = {
     Lua = {
       workspace = { checkThirdParty = false },
@@ -602,18 +604,18 @@ local servers = {
     enable_roslyn_analyzers = true,
   },
   html = {
-    filetypes = { 'html', 'twig', 'hbs', "jsx", "tsx", "rust", "css", "scss", "javascript", "typescript" },
+    filetypes = { 'html', 'twig', 'hbs', "jsx", "tsx", --[[ "rust", ]] "css", "scss", "javascript", "typescript" },
     init_options = {
       userLanguages = {
-        rust = "html"
+        -- rust = "html"
       },
     },
   },
   tailwindcss = {
-    filetypes = { 'html', 'twig', 'hbs', "jsx", "tsx", "rust", "css", "scss", "javascript", "typescript", "javascriptreact", "typescriptreact"},
+    filetypes = { 'html', 'twig', 'hbs', "jsx", "tsx", --[[ "rust", ]] "css", "scss", "javascript", "typescript", "javascriptreact", "typescriptreact"},
     init_options = {
       userLanguages = {
-        rust = "html"
+        -- rust = "html"
       },
     },
   },
@@ -652,6 +654,10 @@ require("lspconfig")['gdscript'].setup {
   capabilities = capabilities,
   on_attach = on_attach,
   -- cmd = vim.lsp.rpc.connect('172.18.176.1', 6005)
+}
+require'lspconfig'.glsl_analyzer.setup{
+  capabilities = capabilities,
+  on_attach = on_attach,
 }
 
 
