@@ -530,8 +530,9 @@ require('nvim-treesitter.configs').setup {
 }
 
 
--- vim.opt.foldmethod = "expr"
--- vim.opt.foldexpr = "nvim_treesitter#foldexpr()"
+vim.opt.foldmethod = "expr"
+vim.opt.foldexpr = "nvim_treesitter#foldexpr()"
+vim.opt.foldlevelstart = 99
 
 -- Diagnostic keymaps
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous diagnostic message' })
@@ -593,33 +594,37 @@ local servers = {
   -- tsserver = {},
   -- html = { filetypes = { 'html', 'twig', 'hbs'} },
   -- glsl_analyzer = {},
+  emmet_language_server = {},
   lua_ls = {
     Lua = {
+
       workspace = { checkThirdParty = false },
       telemetry = { enable = false },
     },
+  },
+  biome ={
   },
   omnisharp = {
     -- cmd = {'./local/share/nvim/mason/bin/omnisharp', '--languageserver', '--hostPID', tostring(vim.fn.getpid())},
     enable_roslyn_analyzers = true,
   },
   html = {
-    filetypes = { 'html', 'twig', 'hbs', "jsx", "tsx", --[[ "rust", ]] "css", "scss", "javascript", "typescript" },
+    -- filetypes = { 'html', 'twig', 'hbs', "jsx", "tsx", "rust", "css", "scss", "javascript", "typescript" },
     init_options = {
-      userLanguages = {
-        -- rust = "html"
-      },
+      -- userLanguages = {
+      --   rust = "html"
+      -- },
     },
   },
   tailwindcss = {
-    filetypes = { 'html', 'twig', 'hbs', "jsx", "tsx", --[[ "rust", ]] "css", "scss", "javascript", "typescript", "javascriptreact", "typescriptreact"},
+    -- filetypes = { 'html', 'twig', 'hbs', "jsx", "tsx", "rust", "css", "scss", "javascript", "typescript", "javascriptreact", "typescriptreact"},
     init_options = {
-      userLanguages = {
-        -- rust = "html"
-      },
+      -- userLanguages = {
+      --   rust = "html"
+      -- },
     },
   },
-
+  jdtls={},
 }
 
 -- Setup neovim lua configuration
