@@ -1,4 +1,3 @@
-
 if vim.g.neovide then
   vim.g.neovide_remember_window_size = true
 end
@@ -16,6 +15,8 @@ vim.keymap.set('i', '<C-J>', 'copilot#Accept("<CR>")', {
 })
 
 vim.g.copilot_no_tab_map = true
+-- disable copilot by default
+vim.g.copilot_enabled = false
 
 
 -- Install package manager
@@ -46,9 +47,160 @@ require('lazy').setup({
   -- Detect tabstop and shiftwidth automatically
   'tpope/vim-sleuth',
 
+
   -- NOTE: This is where your plugins related to LSP can be installed.
   --  The configuration is done below. Search for lspconfig to find it below.
   --
+  {
+    "tamago324/nlsp-settings.nvim",
+    dependencies = {
+      "neovim/nvim-lspconfig", -- Optional but recommended dependency
+    },
+    config = function()
+      require("nlspsettings").setup({
+        config_home = vim.fn.stdpath('config') .. '/nlsp-settings',
+        local_settings_root_markers = { '.git' },
+        jsonls_append_default_schemas = true,
+        append_default_schemas = true,
+        loader = 'json'
+      })
+    end
+  },
+
+  { -- Autoformat
+    'stevearc/conform.nvim',
+    lazy = false,
+    keys = {
+      {
+        '<leader>cf',
+        function()
+          require('conform').format { async = true, lsp_fallback = true }
+        end,
+        mode = '',
+        desc = '[F]ormat buffer',
+      },
+    },
+    opts = {
+      notify_on_error = true,
+      -- format_on_save = function(bufnr)
+      --   -- Disable "format_on_save lsp_fallback" for languages that don't
+      --   -- have a well standardized coding style. You can add additional
+      --   -- languages here or re-enable it for the disabled ones.
+      --   local disable_filetypes = { c = true, cpp = true, java = false, xml = true, html = true, javascript = true }
+      --   return {
+      --     timeout_ms = 500,
+      --     lsp_fallback = not disable_filetypes[vim.bo[bufnr].filetype],
+      --   }
+      -- end,
+      formatters_by_ft = {
+        lua = { 'stylua' },
+        -- Conform can also run multiple formatters sequentially
+        -- python = { "isort", "black" },
+        --
+        -- You can use a sub-list to tell conform to run *until* a formatter
+        -- is found.
+        -- javascript = { { "prettierd", "prettier" } },
+        java = { 'jdtls', 'clang-format' },
+        php = { 'php' }
+      },
+      formatters = {
+        php = {
+          command = "php-cs-fixer",
+          args = {
+            "fix",
+            "$FILENAME",
+            -- "--config=/your/path/to/config/file/[filename].php",
+            -- "--allow-risky=yes",             -- if you have risky stuff in config, if not you dont need it.
+          },
+          stdin = false,
+        }
+      },
+    },
+  },
+
+  {                --Note Taking notetaking notes note
+    "epwalsh/obsidian.nvim",
+    version = "*", -- recommended, use latest release instead of latest commit
+    lazy = true,
+    ft = "markdown",
+    -- Replace the above line with this if you only want to load obsidian.nvim for markdown files in your vault:
+    -- event = {
+    --   -- If you want to use the home shortcut '~' here you need to call 'vim.fn.expand'.
+    --   -- E.g. "BufReadPre " .. vim.fn.expand "~" .. "/my-vault/**.md"
+    --   "BufReadPre path/to/my-vault/**.md",
+    --   "BufNewFile path/to/my-vault/**.md",
+    -- },
+    dependencies = {
+      -- Required.
+      "nvim-lua/plenary.nvim",
+
+      -- see below for full list of optional dependencies 👇
+    },
+    opts = {
+      workspaces = {
+        {
+          name = "personal",
+          path = "~/notes/vault1",
+        },
+      },
+
+      -- see below for full list of options 👇
+    },
+  },
+  { -- Linting
+    'mfussenegger/nvim-lint',
+    event = { 'BufReadPre', 'BufNewFile' },
+    config = function()
+      local lint = require 'lint'
+      lint.linters_by_ft = {
+        -- markdown = { 'markdownlint' },
+        java = { 'checkstyle' },
+        html = { 'djlint' },
+      }
+
+      -- To allow other plugins to add linters to require('lint').linters_by_ft,
+      -- instead set linters_by_ft like this:
+      -- lint.linters_by_ft = lint.linters_by_ft or {}
+      -- lint.linters_by_ft['markdown'] = { 'markdownlint' }
+      --
+      -- However, note that this will enable a set of default linters,
+      -- which will cause errors unless these tools are available:
+      -- {
+      --   clojure = { "clj-kondo" },
+      --   dockerfile = { "hadolint" },
+      --   inko = { "inko" },
+      --   janet = { "janet" },
+      --   json = { "jsonlint" },
+      --   markdown = { "vale" },
+      --   rst = { "vale" },
+      --   ruby = { "ruby" },
+      --   terraform = { "tflint" },
+      --   text = { "vale" }
+      -- }
+      --
+      -- You can disable the default linters by setting their filetypes to nil:
+      -- lint.linters_by_ft['clojure'] = nil
+      -- lint.linters_by_ft['dockerfile'] = nil
+      -- lint.linters_by_ft['inko'] = nil
+      -- lint.linters_by_ft['janet'] = nil
+      -- lint.linters_by_ft['json'] = nil
+      -- lint.linters_by_ft['markdown'] = nil
+      -- lint.linters_by_ft['rst'] = nil
+      -- lint.linters_by_ft['ruby'] = nil
+      -- lint.linters_by_ft['terraform'] = nil
+      -- lint.linters_by_ft['text'] = nil
+
+      -- Create autocommand which carries out the actual linting
+      -- on the specified events.
+      local lint_augroup = vim.api.nvim_create_augroup('lint', { clear = true })
+      vim.api.nvim_create_autocmd({ 'BufEnter', 'BufWritePost', 'InsertLeave' }, {
+        group = lint_augroup,
+        callback = function()
+          require('lint').try_lint()
+        end,
+      })
+    end,
+  },
   {
     -- LSP Configuration & Plugins
     'neovim/nvim-lspconfig',
@@ -56,6 +208,7 @@ require('lazy').setup({
       -- Automatically install LSPs to stdpath for neovim
       { 'williamboman/mason.nvim', config = true },
       'williamboman/mason-lspconfig.nvim',
+      'WhoIsSethDaniel/mason-tool-installer.nvim',
 
       -- Useful status updates for LSP
       -- NOTE: `opts = {}` is the same as calling `require('fidget').setup({})`
@@ -69,11 +222,29 @@ require('lazy').setup({
     'Hoffs/omnisharp-extended-lsp.nvim',
   },
   {
+    'smoka7/hop.nvim',
+    version = "*",
+    opts = {
+      keys = 'etovxqpdygfblzhckisuran'
+    },
+    config = function()
+      local hop = require 'hop';
+      hop.setup();
+      local directions = require 'hop.hint'.HintDirection;
+      vim.keymap.set('n', '<leader><leader>/', function()
+        hop.hint_char1 {
+          direction = directions.AFTER_CURSOR
+        }
+      end, { desc = 'Hop to [H]ere' }) -- Hop to here
+    end
+  },
+  {
     -- debugger | debugging | dap
     'mfussenegger/nvim-dap',
     dependencies = {
       -- Creates a beautiful debugger UI
       'rcarriga/nvim-dap-ui',
+      'nvim-neotest/nvim-nio',
 
       -- Installs the debug adapters for you
       'williamboman/mason.nvim',
@@ -90,6 +261,7 @@ require('lazy').setup({
       require('mason-nvim-dap').setup {
         -- Makes a best effort to setup the various debuggers with
         -- reasonable debug configurations
+        automatic_installation = true,
         automatic_setup = true,
 
         -- You can provide additional configuration to the handlers,
@@ -101,9 +273,10 @@ require('lazy').setup({
         ensure_installed = {
           -- Update this to ensure that you have the debuggers for the langs you want
           -- 'delve',
+          'java',
         },
       }
-      
+
       dap.adapters.godot = {
         type = "server",
         host = "127.0.0.1",
@@ -173,11 +346,12 @@ require('lazy').setup({
     },
     config = function()
       -- trouble keybinds | trouble keymaps
-      vim.keymap.set("n", "<leader>xx", function() require("trouble").open() end, { desc = "[X]pen Trouble" })
-      vim.keymap.set("n", "<leader>xw", function() require("trouble").open("workspace_diagnostics") end,
-        { desc = "[W]orkpace diagnostics" })
-      vim.keymap.set("n", "<leader>xd", function() require("trouble").open("document_diagnostics") end,
-        { desc = "[D]ocument diagnostics" })
+      vim.keymap.set("n", "<leader>xx", function() require("trouble").open("diagnostics") end,
+        { desc = "[X]pen Trouble" })
+      -- vim.keymap.set("n", "<leader>xw", function() require("trouble").open("workspace_diagnostics") end,
+      --   { desc = "[W]orkpace diagnostics" })
+      -- vim.keymap.set("n", "<leader>xd", function() require("trouble").open("document_diagnostics") end,
+      --   { desc = "[D]ocument diagnostics" })
       vim.keymap.set("n", "<leader>xq", function() require("trouble").open("quickfix") end, { desc = "[Q]uickfix" })
       vim.keymap.set("n", "<leader>xl", function() require("trouble").open("loclist") end, { desc = "[L]oclist" })
     end,
@@ -200,7 +374,7 @@ require('lazy').setup({
   },
   {
     'nvim-tree/nvim-tree.lua',
-    commit='75ff64e',
+    commit = '75ff64e',
     lazy = false,
     dependencies = {
       'nvim-tree/nvim-web-devicons',
@@ -251,10 +425,14 @@ require('lazy').setup({
 
   {
     -- Theme gruvbox
-    "ellisonleao/gruvbox.nvim",
+    -- "ellisonleao/gruvbox.nvim",
+    -- "Mofiqul/dracula.nvim",
+    "folke/tokyonight.nvim",
     priority = 1000,
     config = function()
-      vim.cmd.colorscheme 'gruvbox'
+      vim.cmd.colorscheme 'tokyonight-moon'
+      -- vim.cmd.colorscheme 'dracula'
+      -- vim.cmd.colorscheme 'gruvbox'
     end,
   },
 
@@ -265,7 +443,7 @@ require('lazy').setup({
     opts = {
       options = {
         icons_enabled = true,
-        theme = 'gruvbox',
+        theme = 'tokyonight',
         -- component_separators = '|',
         -- section_separators = '',
       },
@@ -340,20 +518,6 @@ require('lazy').setup({
     end,
   },
 
-  -- NOTE: Next Step on Your Neovim Journey: Add/Configure additional "plugins" for kickstart
-  --       These are some example plugins that I've included in the kickstart repository.
-  --       Uncomment any of the lines below to enable them.
-  -- require 'extension.snippets',
-  -- require 'extension.whichkey',
-  -- require 'extension.cmp',
-
-  -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
-  --    You can use this folder to prevent any conflicts with this init.lua if you're interested in keeping
-  --    up-to-date with whatever is in the kickstart repo.
-  --    Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  --
-  --    For additional information see: https://github.com/folke/lazy.nvim#-structuring-your-plugins
-  -- { import = 'custom.plugins' },
 }, {})
 
 require 'extension.snippets'
@@ -382,10 +546,14 @@ vim.opt.shiftround = true
 vim.opt.expandtab = true
 vim.opt.showcmd = true
 vim.opt.laststatus = 2
+vim.opt.shiftwidth = 4
+vim.opt.tabstop = 4
+vim.opt.textwidth = 200
 
 vim.o.completeopt = 'menuone,noselect'
 
 vim.o.termguicolors = true
+vim.o.conceallevel = 1
 
 --[[KEYMAPS | keymappings | maps | keybinds]]
 
@@ -461,6 +629,7 @@ vim.keymap.set('n', '<leader>ff', require('telescope.builtin').find_files, { des
 vim.keymap.set('n', '<leader>fh', require('telescope.builtin').help_tags, { desc = '[F]ind [H]elp' })
 vim.keymap.set('n', '<leader>fg', require('telescope.builtin').live_grep, { desc = '[F]ind with Live [G]rep' })
 vim.keymap.set('n', '<leader>fd', require('telescope.builtin').diagnostics, { desc = '[F]ind [D]iagnostics' })
+vim.keymap.set('n', '<leader>fb', require('telescope.builtin').buffers, { desc = '[F]ind [B]uffers' })
 
 -- [[ Configure Treesitter ]]
 -- See `:help nvim-treesitter`
@@ -564,14 +733,13 @@ local on_attach = function(_, bufnr)
   nmap('<leader>cr', require('telescope.builtin').lsp_references, 'goto [R]eferences')
   nmap('<leader>ci', vim.lsp.buf.implementation, 'goto [I]mplementation')
   nmap('<leader>ct', vim.lsp.buf.type_definition, '[T]ype definition')
-  nmap('<leader>cf', vim.lsp.buf.format, '[F]ormat buffer')
+  -- nmap('<leader>cf', vim.lsp.buf.format, '[F]ormat buffer')
   nmap('<leader>cs', require('telescope.builtin').lsp_document_symbols, 'document [s]ymbols')
   nmap('<leader>cS', require('telescope.builtin').lsp_dynamic_workspace_symbols, 'workspace [S]ymbols')
 
   -- See `:help K` for why this keymap
   nmap('<leader>ck', vim.lsp.buf.hover, 'Hover Documentation')
   nmap('<C-k>', vim.lsp.buf.signature_help, 'Signature Documentation')
-
 end
 
 
@@ -594,6 +762,8 @@ local servers = {
   -- tsserver = {},
   -- html = { filetypes = { 'html', 'twig', 'hbs'} },
   -- glsl_analyzer = {},
+  -- checkstyle = {
+  -- },
   emmet_language_server = {},
   lua_ls = {
     Lua = {
@@ -602,7 +772,10 @@ local servers = {
       telemetry = { enable = false },
     },
   },
-  biome ={
+  biome = {
+  },
+  jinja_lsp = {
+    filetypes = { 'html' }
   },
   omnisharp = {
     -- cmd = {'./local/share/nvim/mason/bin/omnisharp', '--languageserver', '--hostPID', tostring(vim.fn.getpid())},
@@ -624,7 +797,14 @@ local servers = {
       -- },
     },
   },
-  jdtls={},
+  jdtls = {
+  },
+}
+
+local checkstyle = require('lint').linters.checkstyle
+checkstyle.args = {
+  "-c",
+  "file://" .. vim.fn.getcwd() .. "/config/checkstyle/checkstyle.xml"
 }
 
 -- Setup neovim lua configuration
@@ -641,13 +821,16 @@ mason_lspconfig.setup {
   ensure_installed = vim.tbl_keys(servers),
 }
 
+require('mason-tool-installer').setup { ensure_installed = vim.tbl_keys(servers or {}) }
+
 mason_lspconfig.setup_handlers {
   function(server_name)
     require('lspconfig')[server_name].setup {
       capabilities = capabilities,
       on_attach = on_attach,
       handlers = server_name == "omnisharp" and { ["textDocument/definition"] = require('omnisharp_extended').handler } or
-      {},
+          {},
+      format = (servers[server_name] or {}).format,
       settings = servers[server_name],
       filetypes = (servers[server_name] or {}).filetypes,
       init_options = (servers[server_name] or {}).init_options,
@@ -660,7 +843,7 @@ require("lspconfig")['gdscript'].setup {
   on_attach = on_attach,
   -- cmd = vim.lsp.rpc.connect('172.18.176.1', 6005)
 }
-require'lspconfig'.glsl_analyzer.setup{
+require 'lspconfig'.glsl_analyzer.setup {
   capabilities = capabilities,
   on_attach = on_attach,
 }
@@ -713,6 +896,7 @@ cmp.setup {
   sources = {
     { name = 'nvim_lsp' },
     { name = 'luasnip' },
+    { name = 'codeium' },
   },
 }
 
@@ -728,4 +912,3 @@ wk.register({
   ["<leader>c"] = { name = "+code" },
   ["<leader>g"] = { name = "+git" },
 })
-
