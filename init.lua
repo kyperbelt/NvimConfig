@@ -41,12 +41,15 @@ require('lazy').setup({
   -- Git related plugins
   'tpope/vim-fugitive',
   'tpope/vim-rhubarb',
+
+  -- Other
   'godlygeek/tabular',
   'rhysd/vim-grammarous',
+
+  -- AI
   'github/copilot.vim',
   -- Detect tabstop and shiftwidth automatically
   'tpope/vim-sleuth',
-
 
   -- NOTE: This is where your plugins related to LSP can be installed.
   --  The configuration is done below. Search for lspconfig to find it below.
@@ -142,10 +145,59 @@ require('lazy').setup({
           name = "personal",
           path = "~/notes/vault1",
         },
+        -- see below for full list of options 👇
       },
 
-      -- see below for full list of options 👇
+      -- -- Optional, customize how note IDs are generated given an optional title.
+      -- ---@param title string|?
+      -- ---@return string
+      -- note_id_func = function(title)
+      --   -- Create note IDs in a Zettelkasten format with a timestamp and a suffix.
+      --   -- In this case a note with the title 'My new note' will be given an ID that looks
+      --   -- like '1657296016-my-new-note', and therefore the file name '1657296016-my-new-note.md'
+      --   local suffix = ""
+      --   if title ~= nil then
+      --     -- If title is given, transform it into valid file name.
+      --     suffix = title:gsub(" ", "-"):gsub("[^A-Za-z0-9-]", ""):lower()
+      --   else
+      --     -- If title is nil, just add 4 random uppercase letters to the suffix.
+      --     for _ = 1, 4 do
+      --       suffix = suffix .. string.char(math.random(65, 90))
+      --     end
+      --   end
+      --   return tostring(os.time()) .. "-" .. suffix
+      -- end,
+
+      -- Optional, alternatively you can customize the frontmatter data.
+      ---@return table
+      note_frontmatter_func = function(note)
+        -- Add the title of the note as an alias.
+        if note.title then
+          note:add_alias(note.title)
+        end
+
+        local out = { title = note.title, id = note.id, aliases = note.aliases, tags = note.tags }
+
+        -- `note.metadata` contains any manually added fields in the frontmatter.
+        -- So here we just make sure those fields are kept in the frontmatter.
+        if note.metadata ~= nil and not vim.tbl_isempty(note.metadata) then
+          for k, v in pairs(note.metadata) do
+            out[k] = v
+          end
+        end
+
+        return out
+      end,
+      -- Optional, by default when you use `:ObsidianFollowLink` on a link to an external
+      -- URL it will be ignored but you can customize this behavior here.
+      ---@param url string
+      follow_url_func = function(url)
+        -- Open the URL in the default web browser.
+        vim.fn.jobstart({ "open", url }) -- Mac OS
+        -- vim.fn.jobstart({"xdg-open", url})  -- linux
+      end,
     },
+
   },
   { -- Linting
     'mfussenegger/nvim-lint',
@@ -397,6 +449,7 @@ require('lazy').setup({
         ["<leader>b"] = { name = "+buffer" },
         ["<leader>c"] = { name = "+code" },
         ["<leader>g"] = { name = "+git" },
+        ["<leader>n"] = { name = "+notes" },
       })
     end
     ,
@@ -712,12 +765,17 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagn
 -- [[ Configure LSP ]]
 --  This function gets run when an LSP connects to a particular buffer.
 local on_attach = function(_, bufnr)
-  -- NOTE: Remember that lua is a real programming language, and as such it is possible
-  -- to define small helper and utility functions so you don't have to repeat yourself
-  -- many times.
-  --
-  -- In this case, we create a function that lets us more easily define mappings specific
-  -- for LSP related items. It sets the mode, buffer and description for us each time.
+  local wk = require("which-key")
+
+  wk.register({
+    ["<leader>f"] = { name = "+find" },
+    ["<leader>w"] = { name = "+window" },
+    ["<leader>b"] = { name = "+buffer" },
+    ["<leader>c"] = { name = "+code" },
+    ["<leader>g"] = { name = "+git" },
+    ["<leader>n"] = { name = "+notes" },
+  })
+
   local nmap = function(keys, func, desc)
     if desc then
       desc = '[lsp] ' .. desc
@@ -725,6 +783,43 @@ local on_attach = function(_, bufnr)
 
     vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc })
   end
+
+
+  local ccmd = function(cmd)
+    return function()
+      vim.cmd(cmd)
+    end
+  end
+
+  local ft = vim.fn.getbufvar(bufnr, '&filetype');
+
+  if (ft == 'markdown') then
+    local nmap_notes = function(keys, func, desc)
+      if desc then
+        desc = '[Notes] ' .. desc
+      end
+
+      vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc })
+    end
+    nmap_notes('<leader>mp', ccmd('MarkdownPreviewToggle'), 'Toggle Markdown Preview')
+
+    -- obsidian
+    -- search/find
+    nmap_notes('<leader>fn', ccmd('ObsidianSearch'), 'find [n]otes')
+
+    -- note specific operations
+    nmap_notes('<leader>nn', ccmd('ObsidianNew'), '[n]ew note')
+    nmap_notes('<leader>no', ccmd('ObsidianOpen'), '[o]pen obsidian')
+    nmap_notes('<leader>np', ccmd('ObsidianPasteImg'), '[p]aste image')
+    nmap_notes('<leader>nd', ccmd('ObsidianToday'), 'to[d]ays daily note')
+    nmap_notes('<leader>ne', ccmd('ObsidianExtractNote'), '[e]xtract note')
+    nmap_notes('<leader>nt', ccmd('ObsidianTags'), 'find note [t]ags')
+
+    -- links
+    nmap_notes('<leader>nl', ccmd('ObsidianLinks'), 'note link[s]')
+    nmap_notes('<leader>nb', ccmd('ObsidianBacklinks'), 'note [b]ack links')
+  end
+
 
   nmap('<leader>cn', vim.lsp.buf.rename, 're[N]ame')
   nmap('<leader>cc', vim.lsp.buf.code_action, '[C]ode action')
@@ -896,19 +991,5 @@ cmp.setup {
   sources = {
     { name = 'nvim_lsp' },
     { name = 'luasnip' },
-    { name = 'codeium' },
   },
 }
-
-
--- whichkey
-
-local wk = require("which-key")
-
-wk.register({
-  ["<leader>f"] = { name = "+find" },
-  ["<leader>w"] = { name = "+window" },
-  ["<leader>b"] = { name = "+buffer" },
-  ["<leader>c"] = { name = "+code" },
-  ["<leader>g"] = { name = "+git" },
-})
