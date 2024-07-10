@@ -897,6 +897,65 @@ local on_attach = function(_, bufnr)
 
       vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc })
     end
+
+    -- OBSIDIAN SYNC NOTES
+    local function obsidian_sync()
+      -- Function to execute a shell command and return the output
+      local function exec_cmd(cmd)
+        local handle = io.popen(cmd)
+        local result = handle:read("*a")
+        handle:close()
+        return result
+      end
+
+      -- Check for changes
+      local git_status = exec_cmd("git status --porcelain")
+      if git_status == "" then
+        print("No changes to sync.")
+        return
+      end
+
+      -- Stage all changes
+      exec_cmd("git add .")
+
+      -- Commit the changes
+      local timestamp = os.date("%Y-%m-%d %H:%M:%S")
+      local commit_msg = "sync from " .. timestamp
+      exec_cmd(string.format('git commit -m "%s"', commit_msg))
+
+      -- Pull with rebase to avoid conflicts and preserve changes
+      local pull_result = exec_cmd("git pull --rebase 2>&1")
+
+      -- Check for conflicts
+      if pull_result:find("CONFLICT") then
+        print("There are conflicts. Please resolve them manually.")
+        -- Get the list of conflicted files
+        local conflict_files = exec_cmd("git diff --name-only --diff-filter=U")
+        print("Conflicted files: " .. conflict_files:gsub("\n", ", "))
+        -- Abort the rebase to avoid leaving the repository in an inconsistent state
+        exec_cmd("git rebase --abort")
+      else
+        -- Push the changes if the rebase was successful
+        local push_result = exec_cmd("git push 2>&1")
+        if push_result:find("error") then
+          print("Push failed. Please check the errors.")
+        else
+          print("Sync complete and changes pushed to remote.")
+        end
+      end
+    end
+
+    -- Create the ObsidianSync command
+    vim.api.nvim_create_user_command("ObsidianSync", obsidian_sync, {})
+
+    -- SYNC ON SAVE
+    vim.api.nvim_create_autocmd("BufWritePost", {
+      pattern = "*",
+      callback = function()
+        vim.cmd("ObsidianSync")
+      end,
+    })
+
     nmap_notes('<leader>mp', ccmd('MarkdownPreviewToggle'), 'Toggle Markdown Preview')
 
     -- obsidian
