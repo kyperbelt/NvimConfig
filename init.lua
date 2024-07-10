@@ -19,6 +19,78 @@ vim.g.copilot_no_tab_map = true
 vim.g.copilot_enabled = false
 
 
+-- OBSIDIAN SYNC NOTES
+local function obsidian_sync()
+  -- Function to execute a shell command and return the output
+  local function exec_cmd(cmd)
+    local handle = io.popen(cmd)
+    local result = handle:read("*a")
+    handle:close()
+    return result
+  end
+
+  -- Check for changes
+  local git_status = exec_cmd("git status --porcelain")
+  if git_status == "" then
+    -- Check for remote changes
+    local remote_status = exec_cmd("git fetch --dry-run 2>&1")
+    if remote_status == "" then
+      print("No changes to sync.")
+      return
+    else
+      print("Remote changes detected, pulling...")
+      -- Pull with rebase to avoid conflicts and preserve changes
+      local pull_result = exec_cmd("git pull --rebase 2>&1")
+
+      -- Check for conflicts
+      if pull_result:find("CONFLICT") then
+        print("There are conflicts. Please resolve them manually.")
+        -- Get the list of conflicted files
+        local conflict_files = exec_cmd("git diff --name-only --diff-filter=U")
+        print("Conflicted files: " .. conflict_files:gsub("\n", ", "))
+        -- Abort the rebase to avoid leaving the repository in an inconsistent state
+        exec_cmd("git rebase --abort")
+      else
+        print("Sync complete and changes pulled from remote.")
+      end
+      return
+    end
+  end
+
+  -- Stage all changes
+  exec_cmd("git add .")
+
+  -- Commit the changes
+  local timestamp = os.date("%Y-%m-%d %H:%M:%S")
+  local commit_msg = "sync from " .. timestamp
+  exec_cmd(string.format('git commit -m "%s"', commit_msg))
+
+  -- Pull with rebase to avoid conflicts and preserve changes
+  local pull_result = exec_cmd("git pull --rebase 2>&1")
+
+  -- Check for conflicts
+  if pull_result:find("CONFLICT") then
+    print("There are conflicts. Please resolve them manually.")
+    -- Get the list of conflicted files
+    local conflict_files = exec_cmd("git diff --name-only --diff-filter=U")
+    print("Conflicted files: " .. conflict_files:gsub("\n", ", "))
+    -- Abort the rebase to avoid leaving the repository in an inconsistent state
+    exec_cmd("git rebase --abort")
+  else
+    -- Push the changes if the rebase was successful
+    local push_result = exec_cmd("git push 2>&1")
+    if push_result:find("error") then
+      print("Push failed. Please check the errors.")
+    else
+      print("Sync complete and changes pushed to remote.")
+    end
+  end
+end
+
+-- Create the ObsidianSync command
+vim.api.nvim_create_user_command("ObsidianSync", obsidian_sync, {})
+
+
 -- Install package manager
 --    https://github.com/folke/lazy.nvim
 --    `:help lazy.nvim.txt` for more info
@@ -898,63 +970,14 @@ local on_attach = function(_, bufnr)
       vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc })
     end
 
-    -- OBSIDIAN SYNC NOTES
-    local function obsidian_sync()
-      -- Function to execute a shell command and return the output
-      local function exec_cmd(cmd)
-        local handle = io.popen(cmd)
-        local result = handle:read("*a")
-        handle:close()
-        return result
+    local vmap_notes = function(keys, func, desc)
+      if desc then
+        desc = '[Notes] ' .. desc
       end
 
-      -- Check for changes
-      local git_status = exec_cmd("git status --porcelain")
-      if git_status == "" then
-        print("No changes to sync.")
-        return
-      end
-
-      -- Stage all changes
-      exec_cmd("git add .")
-
-      -- Commit the changes
-      local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-      local commit_msg = "sync from " .. timestamp
-      exec_cmd(string.format('git commit -m "%s"', commit_msg))
-
-      -- Pull with rebase to avoid conflicts and preserve changes
-      local pull_result = exec_cmd("git pull --rebase 2>&1")
-
-      -- Check for conflicts
-      if pull_result:find("CONFLICT") then
-        print("There are conflicts. Please resolve them manually.")
-        -- Get the list of conflicted files
-        local conflict_files = exec_cmd("git diff --name-only --diff-filter=U")
-        print("Conflicted files: " .. conflict_files:gsub("\n", ", "))
-        -- Abort the rebase to avoid leaving the repository in an inconsistent state
-        exec_cmd("git rebase --abort")
-      else
-        -- Push the changes if the rebase was successful
-        local push_result = exec_cmd("git push 2>&1")
-        if push_result:find("error") then
-          print("Push failed. Please check the errors.")
-        else
-          print("Sync complete and changes pushed to remote.")
-        end
-      end
+      vim.keymap.set('v', keys, func, { buffer = bufnr, desc = desc })
     end
 
-    -- Create the ObsidianSync command
-    vim.api.nvim_create_user_command("ObsidianSync", obsidian_sync, {})
-
-    -- SYNC ON SAVE
-    vim.api.nvim_create_autocmd("BufWritePost", {
-      pattern = "*",
-      callback = function()
-        vim.cmd("ObsidianSync")
-      end,
-    })
 
     nmap_notes('<leader>mp', ccmd('MarkdownPreviewToggle'), 'Toggle Markdown Preview')
 
@@ -966,13 +989,16 @@ local on_attach = function(_, bufnr)
     nmap_notes('<leader>nn', ccmd('ObsidianNew'), '[n]ew note')
     nmap_notes('<leader>no', ccmd('ObsidianOpen'), '[o]pen obsidian')
     nmap_notes('<leader>np', ccmd('ObsidianPasteImg'), '[p]aste image')
-    nmap_notes('<leader>nd', ccmd('ObsidianToday'), 'to[d]ays daily note')
-    nmap_notes('<leader>ne', ccmd('ObsidianExtractNote'), '[e]xtract note')
+    nmap_notes('<leader>nd', ccmd('ObsidianDailies'), 'daily notes')
     nmap_notes('<leader>nt', ccmd('ObsidianTags'), 'find note [t]ags')
+    nmap_notes('<leader>ns', ccmd('ObsidianSync'), '[s]ync notes')
+
+    vmap_notes('<leader>ne', ccmd('ObsidianExtractNote'), '[e]xtract note')
 
     -- links
-    nmap_notes('<leader>nl', ccmd('ObsidianLinks'), 'note link[s]')
+    nmap_notes('<leader>nl', ccmd('ObsidianLinks'), 'show note [l]inks')
     nmap_notes('<leader>nb', ccmd('ObsidianBacklinks'), 'note [b]ack links')
+    vmap_notes('<leader>nl', ccmd('ObsidianLinkNew'), '[l]ink')
   end
 
 
