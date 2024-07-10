@@ -3,8 +3,8 @@ if vim.g.neovide then
 end
 
 vim.g.loaded_netrw = 1
-vim.g["grammarous#jar_url"] = 'https://www.languagetool.org/download/LanguageTool-5.9.zip'
 vim.g.loaded_netrwPlugin = 1
+vim.g["grammarous#jar_url"] = 'https://www.languagetool.org/download/LanguageTool-5.9.zip'
 
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
@@ -140,6 +140,7 @@ require('lazy').setup({
       -- see below for full list of optional dependencies 👇
     },
     opts = {
+      preferred_link_style = "markdown",
       workspaces = {
         {
           name = "personal",
@@ -426,13 +427,108 @@ require('lazy').setup({
   },
   {
     'nvim-tree/nvim-tree.lua',
-    commit = '75ff64e',
+    -- commit = '75ff64e',
     lazy = false,
     dependencies = {
       'nvim-tree/nvim-web-devicons',
     },
     config = function()
       require('nvim-tree').setup({
+        on_attach = function(bufnr)
+          local api = require('nvim-tree.api')
+
+          local function log(message)
+            vim.api.nvim_out_write(message .. "\n")
+          end
+
+          local function get_clipboard_targets()
+            local targets = vim.fn.systemlist('xclip -selection clipboard -t TARGETS -o')
+            log("Clipboard targets: " .. table.concat(targets, ", "))
+            return targets
+          end
+
+          local function generate_filename(extension)
+            local date = os.date("%Y-%m-%d")
+            local unique_number = tostring(math.random(1000, 9999))
+            return date .. "_img_" .. unique_number .. extension
+          end
+
+          local function is_valid_file_path(path)
+            return vim.fn.filereadable(path) == 1
+          end
+
+          local function resolve_filename_conflict(dir, filename)
+            local new_filename = filename
+            local count = 1
+            while vim.fn.filereadable(dir .. '/' .. new_filename) == 1 do
+              local name, ext = new_filename:match("(.+)(%..+)")
+              new_filename = name .. "_" .. tostring(count) .. ext
+              count = count + 1
+            end
+            return new_filename
+          end
+
+          local function handle_image_clipboard(nvim_tree_dir)
+            local filename = generate_filename(".png")
+            local filepath = nvim_tree_dir .. '/' .. filename
+            os.execute('xclip -selection clipboard -t image/png -o > ' .. vim.fn.shellescape(filepath))
+            log("Image pasted as: " .. filepath)
+          end
+
+          local function handle_text_clipboard(nvim_tree_dir, clipboard_content)
+            local filename = vim.fn.fnamemodify(clipboard_content, ':t')
+            filename = resolve_filename_conflict(nvim_tree_dir, filename)
+            local filepath = nvim_tree_dir .. '/' .. filename
+            os.execute('cp ' .. vim.fn.shellescape(clipboard_content) .. ' ' .. vim.fn.shellescape(filepath))
+            log("File copied to: " .. filepath)
+          end
+
+          local function copy_file_to_nvim_tree_dir()
+            local targets = get_clipboard_targets()
+            local nvim_tree_lib = require 'nvim-tree.lib'
+            local node = nvim_tree_lib.get_node_at_cursor()
+            local nvim_tree_dir = node.absolute_path
+
+            if node.type ~= 'directory' then
+              nvim_tree_dir = vim.fn.fnamemodify(nvim_tree_dir, ':h')
+              log("Current node is a file. Using its directory: " .. nvim_tree_dir)
+            else
+              log("Current node is a directory: " .. nvim_tree_dir)
+            end
+
+            if vim.tbl_contains(targets, "image/png") then
+              log("Clipboard contains an image.")
+              handle_image_clipboard(nvim_tree_dir)
+            else
+              local clipboard_content = vim.fn.system('xclip -selection clipboard -o')
+              clipboard_content = clipboard_content:gsub("%s+", "") -- Remove whitespace
+
+              if is_valid_file_path(clipboard_content) then
+                log("Clipboard contains a valid file path.")
+                handle_text_clipboard(nvim_tree_dir, clipboard_content)
+              else
+                log("Clipboard does not contain a valid file path. Using default paste.")
+                api.fs.paste()
+              end
+            end
+
+            -- Refresh nvim-tree
+            vim.cmd('NvimTreeRefresh')
+            log("nvim-tree refreshed.")
+          end
+
+          local function opts(desc)
+            return { desc = "nvim-tree: " .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
+          end
+          -- default mappings
+          api.config.mappings.default_on_attach(bufnr)
+
+          vim.keymap.set("n", "p", copy_file_to_nvim_tree_dir, opts "PASTE")
+        end,
+
+        actions = {
+          use_system_clipboard = true,
+        },
       })
     end
   },
