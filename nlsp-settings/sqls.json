@@ -1,0 +1,16 @@
+{
+  "settings": {
+    "sqls": {
+      "connections": [
+        {
+          "driver": "postgresql",
+          "proto": "tcp",
+          "user": "postgres",
+          "host": "localhost",
+          "passwd": "password",
+          "dbName": "newsletter"
+        },
+      ]
+    }
+  }
+}
