@@ -472,15 +472,20 @@ require("lazy").setup({
 		event = { "BufReadPre", "BufNewFile" },
 		config = function()
 			local lint = require("lint")
-			lint.linters_by_ft = {
-				markdown = { "cspell" },
-				java = { "checkstyle" },
-				html = { "djlint" },
-			}
+			-- lint.linters_by_ft = {
+			-- 	markdown = { "cspell" },
+			-- 	java = { "checkstyle" },
+			-- 	html = { "djlint" },
+			-- 	yaml = { "cfn-lint" },
+			-- }
 
 			-- To allow other plugins to add linters to require('lint').linters_by_ft,
 			-- instead set linters_by_ft like this:
-			-- lint.linters_by_ft = lint.linters_by_ft or {}
+			lint.linters_by_ft = lint.linters_by_ft or {}
+			lint.linters_by_ft["markdown"] = { "cspell" }
+			lint.linters_by_ft["java"] = { "checkstyle" }
+			lint.linters_by_ft["html"] = { "djlint" }
+			-- lint.linters_by_ft["yaml"] = { "vacuum"}
 			-- lint.linters_by_ft['markdown'] = { 'markdownlint' }
 			--
 			-- However, note that this will enable a set of default linters,
@@ -777,8 +782,8 @@ require("lazy").setup({
 
 					local function copy_file_to_nvim_tree_dir()
 						local targets = get_clipboard_targets()
-						local nvim_tree_lib = require("nvim-tree.lib")
-						local node = nvim_tree_lib.get_node_at_cursor()
+						local nvim_tree_lib = require("nvim-tree.api")
+						local node = nvim_tree_lib.tree.get_node_under_cursor()
 						local nvim_tree_dir = node.absolute_path
 
 						if node.type ~= "directory" then
@@ -1353,7 +1358,7 @@ local servers = {
 			"css",
 			"scss",
 			"javascript",
-			"typescript",
+			-- "typescript",
 		},
 		init_options = {
 			-- userLanguages = {
@@ -1384,9 +1389,16 @@ local servers = {
 		},
 	},
 	jdtls = {},
+	vacuum = {
+		filetypes = {
+			"yaml"
+		}
+	},
 }
 
-local checkstyle = require("lint").linters.checkstyle
+local lint = require("lint")
+
+local checkstyle = lint.linters.checkstyle
 checkstyle.args = {
 	"-c",
 	"file://" .. vim.fn.getcwd() .. "/config/checkstyle/checkstyle.xml",
@@ -1579,3 +1591,65 @@ vim.api.nvim_create_autocmd("FileType", {
 		vim.opt_local.textwidth = 0 -- Set textwidth to 0 to prevent automatic breaking
 	end,
 })
+
+
+local ls = require("luasnip")
+local s = ls.snippet
+local t = ls.text_node
+local i = ls.insert_node
+local f = ls.function_node
+
+local date = function() return { os.date("%Y-%m-%d") } end
+
+ls.add_snippets("markdown", {
+
+  -- Daily Note
+  s("daily", {
+    t({ "# " }), f(date, {}), t(" - Daily Note"),
+    t({ "", "#tags: #daily #work #mentalFitness", "", "## Today’s Focus", "- [ ] " }), i(1, "Goal 1"),
+    t({ "", "- [ ] " }), i(2, "Goal 2"),
+    t({ "", "- [ ] " }), i(3, "Goal 3"),
+    t({ "", "", "## Notes & Highlights", "" }),
+    i(4, "- Something I learned"),
+    t({ "", "", "## Quick Recap", "" }),
+    i(5, "- Recall notes"),
+    t({ "", "", "## Explain Like I’m Teaching", "" }),
+    i(0, "- Explanation here")
+  }),
+
+  -- Project Note
+  s("project", {
+    t({ "# Project: " }), i(1, "Project Name"),
+    t({ "", "#tags: #project #work", "", "## Objective", "" }),
+    i(2, "Goal of this project"),
+    t({ "", "", "## Tasks", "- [ ] " }), i(3, "First step"),
+    t({ "", "", "## Notes", "" }), i(0),
+  }),
+
+  -- Area Note
+  s("area", {
+    t({ "# Area: " }), i(1, "Area Name"),
+    t({ "", "#tags: #area", "", "## Scope", "" }),
+    i(2, "What this area includes"),
+    t({ "", "", "## Responsibilities", "- " }), i(3, "Ongoing task"),
+    t({ "", "", "## Improvements or Reflections", "" }), i(0),
+  }),
+
+  -- Resource Note
+  s("resource", {
+    t({ "# " }), i(1, "Resource Name"),
+    t({ "", "#tags: #resource", "", "## Summary", "" }),
+    i(2, "Key ideas"),
+    t({ "", "", "## Usage Notes", "" }), i(3, "How I apply this"),
+    t({ "", "", "## Links or References", "- " }), i(0),
+  }),
+
+  -- Archive Note
+  s("archive", {
+    t({ "# " }), i(1, "Archived Note"),
+    t({ "", "#tags: #archive", "", "## Summary", "" }),
+    i(2, "Why this was archived"),
+    t({ "", "", "## Linked From", "- " }), i(0),
+  }),
+})
+
